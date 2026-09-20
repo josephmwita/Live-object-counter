@@ -1,43 +1,41 @@
-from ultralytics import YOLO
-import cv2
-from collections import Counter
-
-model = YOLO("yolov8n.pt")
-cap = cv2.VideoCapture(0)
-cap.set(3, 1280)
-cap.set(4, 720)
-
-print("Counting ON - Press 'q' to quit")
-
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        break
-
-    results = model(frame, conf=0.35, verbose=False)
-    annotated = results[0].plot()
-
-    # --- COUNTING LOGIC ---
-    if len(results[0].boxes) > 0:
-        classes = [model.names[int(c)] for c in results[0].boxes.cls]
-        counts = Counter(classes)
-
-        # Build text like "person: 2 | car: 3 | bottle: 1"
-        count_text = " | ".join([f"{k}: {v}" for k, v in counts.items()])
-        total_text = f"Total: {len(classes)} objects"
-
-        # Draw black background for text
-        cv2.rectangle(annotated, (10, 10), (950, 70), (0,0,0), -1)
-        cv2.putText(annotated, count_text, (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,0), 2)
-        cv2.putText(annotated, total_text, (20, 65), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 2)
-    else:
-        cv2.rectangle(annotated, (10, 10), (300, 50), (0,0,0), -1)
-        cv2.putText(annotated, "No objects", (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
-
-    cv2.imshow("Live Counter - Team ObjectDetect", annotated)
-
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-cap.release()
-cv2.destroyAllWindows()
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Live Object Counter</title>
+<style>
+body{margin:0;background:#000;color:#fff;font-family:system-ui;text-align:center}
+#wrap{position:relative;display:inline-block;width:100%;max-width:900px}
+video,canvas{width:100%;border-radius:12px}
+canvas{position:absolute;top:0;left:0}
+#counts{padding:12px;font-size:18px;font-weight:700}
+button{padding:12px 20px;margin:15px;border-radius:8px;border:0;background:#00e676;font-weight:bold;font-size:16px}
+</style>
+</head>
+<body>
+<h2>Live Object Counter 👁️</h2>
+<button id="start">Start Camera</button>
+<div id="counts">Waiting...</div>
+<div id="wrap"><video id="v" autoplay muted playsinline></video><canvas id="c"></canvas></div>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+<script>
+const video=document.getElementById('v'), canvas=document.getElementById('c'), ctx=canvas.getContext('2d'), countsEl=document.getElementById('counts'), btn=document.getElementById('start');
+let model;
+btn.onclick=async()=>{
+  btn.style.display='none'; countsEl.textContent='Loading AI...';
+  model=await cocoSsd.load();
+  const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+  video.srcObject=s;
+  video.onloadedmetadata=()=>{canvas.width=video.videoWidth;canvas.height=video.videoHeight;detect();}
+};
+async function detect(){
+  const preds=await model.detect(video);
+  ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(video,0,0,canvas.width,canvas.height);
+  const counter={}; preds.forEach(p=>{counter[p.class]=(counter[p.class]||0)+1; ctx.strokeStyle='#00e676';ctx.lineWidth=3;ctx.strokeRect(p.bbox[0],p.bbox[1],p.bbox[2],p.bbox[3]); ctx.fillStyle='#00e676';ctx.fillRect(p.bbox[0],p.bbox[1]-20,p.bbox[2],20); ctx.fillStyle='#000';ctx.font='14px system-ui';ctx.fillText(p.class+' '+(p.score*100|0)+'%',p.bbox[0]+5,p.bbox[1]-5);});
+  const text=Object.entries(counter).map(([k,v])=>`${k}: ${v}`).join(' | ')||'No objects'; countsEl.textContent=text+` | Total: ${preds.length}`;
+  requestAnimationFrame(detect);
+}
+</script>
+</body>
+</html>
