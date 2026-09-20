@@ -2,7 +2,7 @@
 
 Real-time object detection that just WORKS. Point your webcam at anything — it sees it, labels it, and counts it. No files saved, no records kept.
 
-Built by **Joseph Mwita** — from playing around to shipping AI.
+Built by Joseph Mwita
 
 ### Live Demo
 ![demo](https://user-images.githubusercontent.com/placeholder/demo.gif)
